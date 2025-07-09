@@ -1,4 +1,4 @@
-<!-- viewer.html (Diperbarui dengan Tombol Audio) -->
+<!-- viewer.html -->
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -6,18 +6,28 @@
     <title>AI TikTok Viewer</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* ... CSS bisa sama seperti di host.html ... */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; margin: 20px; }
+        /* Anda bisa menggunakan CSS yang sama persis seperti di host.html */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; margin: 20px; color: #333; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { color: #1c1e21; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        .setup-box, .host-info { margin-bottom: 20px; padding: 15px; background: #f7f8fa; border: 1px solid #ddd; border-radius: 6px; }
+        input[type="text"] { width: calc(100% - 24px); padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; margin-bottom: 10px; }
         button { font-size: 16px; padding: 12px 20px; border: none; border-radius: 6px; background-color: #1877f2; color: white; cursor: pointer; font-weight: bold; }
         #audio-toggle-btn { background-color: #fa383e; }
         #audio-toggle-btn.unmuted { background-color: #31a24c; }
-        /* ... Sisa CSS ... */
+        #log { min-height: 200px; max-height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fff; }
+        .log-item { padding: 8px; border-bottom: 1px solid #f0f2f5; }
+        .log-item:last-child { border-bottom: none; }
+        .log-item .user { font-weight: bold; }
+        .log-item.comment .user { color: #050505; }
+        .log-item.ai_response { background-color: #e7f3ff; border-radius: 6px; margin: 5px 0; }
+        .log-item.ai_response .user { color: #1877f2; }
+        .log-item.status .user { font-weight: bold; color: #65676b; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- ... Bagian Setup Viewer (tetap sama) ... -->
-        <div id="viewer-setup-box">
+        <div id="viewer-setup-box" class="setup-box">
             <h2>Hubungkan ke Live AI</h2>
             <p>Masukkan Room ID yang diberikan oleh Host.</p>
             <input type="text" id="room-id-input" placeholder="Masukkan Room ID">
@@ -28,8 +38,7 @@
         <div id="main-viewer-app" style="display: none;">
             <h1>Live AI TikTok</h1>
             <div class="host-info">
-                Status Koneksi TikTok: <span id="tiktok-status">Menunggu data...</span><br>
-                <!-- TOMBOL AUDIO BARU -->
+                Status Koneksi TikTok: <span id="tiktok-status">Menunggu data...</span><br><br>
                 <button id="audio-toggle-btn">Unmute Audio</button>
             </div>
             <hr>
@@ -43,14 +52,11 @@
         const viewerSetupBox = document.getElementById('viewer-setup-box'), mainViewerApp = document.getElementById('main-viewer-app'),
               roomIdInput = document.getElementById('room-id-input'), connectBtn = document.getElementById('connect-btn'),
               connectionStatusElem = document.getElementById('connection-status'), tiktokStatusElem = document.getElementById('tiktok-status'),
-              audioToggleBtn = document.getElementById('audio-toggle-btn'), // Ambil tombol audio
-              logDiv = document.getElementById('log');
+              audioToggleBtn = document.getElementById('audio-toggle-btn'), logDiv = document.getElementById('log');
 
-        let peer = null, lastTimestamp = 0;
-        let isAudioEnabled = false; // Status audio, defaultnya mati
-
-        // --- Logika Suara dengan Pengecekan 'isAudioEnabled' ---
+        let peer = null, lastTimestamp = 0, isAudioEnabled = false;
         const speechQueue = [], isSpeaking = { value: false };
+
         function processSpeechQueue() {
             if (isSpeaking.value || speechQueue.length === 0 || !isAudioEnabled) return;
             isSpeaking.value = true;
@@ -61,27 +67,36 @@
             utterance.onend = () => { isSpeaking.value = false; processSpeechQueue(); };
             speechSynthesis.speak(utterance);
         }
-        
+
         function toggleAudio() {
             isAudioEnabled = !isAudioEnabled;
             audioToggleBtn.textContent = isAudioEnabled ? 'Mute Audio' : 'Unmute Audio';
             audioToggleBtn.classList.toggle('unmuted', isAudioEnabled);
-            
             if (isAudioEnabled) {
-                // "Bangunkan" engine TTS dengan memutar suara kosong
-                // Ini adalah trik untuk memenuhi syarat interaksi pengguna
-                const wakeUpUtterance = new SpeechSynthesisUtterance(' ');
-                wakeUpUtterance.volume = 0;
-                speechSynthesis.speak(wakeUpUtterance);
-                processSpeechQueue(); // Coba proses antrian jika ada yang tertunda
+                const wakeUp = new SpeechSynthesisUtterance(' ');
+                wakeUp.volume = 0;
+                speechSynthesis.speak(wakeUp);
+                processSpeechQueue();
             } else {
-                speechSynthesis.cancel(); // Hentikan suara jika sedang berbicara
+                speechSynthesis.cancel();
             }
         }
-        audioToggleBtn.addEventListener('click', toggleAudio);
-        
-        // --- Sisa Logika Viewer (sebagian besar tetap sama) ---
-        function connectToHost() { /* ... (fungsi ini tetap sama) ... */ }
+
+        function connectToHost() {
+            const roomId = roomIdInput.value.trim();
+            if (!roomId) { alert("Masukkan Room ID."); return; }
+            connectBtn.disabled = true; connectionStatusElem.textContent = `Mencoba terhubung ke room: ${roomId}...`;
+            if (peer) peer.destroy();
+            peer = new Peer();
+
+            peer.on('open', id => {
+                const conn = peer.connect(roomId);
+                conn.on('open', () => { viewerSetupBox.style.display = 'none'; mainViewerApp.style.display = 'block'; });
+                conn.on('data', handleStateUpdate);
+                conn.on('close', () => { alert("Koneksi ke Host terputus."); window.location.reload(); });
+            });
+            peer.on('error', err => { connectionStatusElem.textContent = `Error: ${err.type}. Room ID mungkin salah.`; connectBtn.disabled = false; });
+        }
         
         function handleStateUpdate(state) {
             tiktokStatusElem.textContent = state.tiktok_status;
@@ -94,7 +109,7 @@
                     case 'ai_response':
                         html = `<div class="log-item ai_response"><span class="user">🤖 AI:</span> ${item.data.text}</div>`;
                         speechQueue.push(item.data.text);
-                        processSpeechQueue(); // Tetap panggil, nanti akan dicek isAudioEnabled
+                        processSpeechQueue();
                         break;
                     case 'status': html = `<div class="log-item status"><span class="user">STATUS:</span> ${item.data.message}</div>`; break;
                 }
@@ -103,9 +118,10 @@
             if (state.log_items.length > 0) lastTimestamp = state.log_items[state.log_items.length - 1].timestamp;
         }
 
-        function addLog(html) { /* ... (fungsi ini tetap sama) ... */ }
+        function addLog(html) { const item = document.createElement('div'); item.innerHTML = html; logDiv.appendChild(item); logDiv.scrollTop = logDiv.scrollHeight; }
         
         connectBtn.addEventListener('click', connectToHost);
+        audioToggleBtn.addEventListener('click', toggleAudio);
     });
     </script>
 </body>
