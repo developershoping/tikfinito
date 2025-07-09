@@ -43,7 +43,7 @@ except Exception as e:
 
 def get_gemini_response(prompt: str) -> str:
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         system_prompt = "Anda adalah Gem, asisten AI yang ceria dan jenaka di TikTok. Jawablah dengan singkat (1-2 kalimat) dan sapa pengguna dengan nama mereka."
         full_prompt = f"{system_prompt}\n\nINPUT: {prompt}\n\nJAWABAN:"
         response = model.generate_content(full_prompt)
