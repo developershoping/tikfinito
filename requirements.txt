@@ -1,0 +1,5 @@
+google-generativeai
+TikTokLive==8.0.0
+python-dotenv
+Flask
+Flask-Cors
