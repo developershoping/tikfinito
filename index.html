@@ -6,10 +6,10 @@
     <title>AI TikTok Viewer</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
-        /* Anda bisa menggunakan CSS yang sama persis seperti di host.html */
+        /* CSS sama persis seperti di host.html */
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #f0f2f5; margin: 20px; color: #333; }
         .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        h1, h2 { color: #1c1e21; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        h1 { color: #1c1e21; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
         .setup-box, .viewer-info { margin-bottom: 20px; padding: 15px; background: #f7f8fa; border: 1px solid #ddd; border-radius: 6px; }
         input[type="text"] { width: calc(100% - 24px); padding: 12px; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; margin-bottom: 10px; }
         button { font-size: 16px; padding: 12px 20px; border: none; border-radius: 6px; background-color: #1877f2; color: white; cursor: pointer; font-weight: bold; }
@@ -86,7 +86,7 @@
                 conn.on('data', handleStateUpdate);
                 conn.on('close', () => { alert("Koneksi ke Host terputus."); window.location.reload(); });
             });
-            peer.on('error', err => { connectionStatusElem.textContent = `Error: ${err.type}. Room ID mungkin salah.`; connectBtn.disabled = false; });
+            peer.on('error', err => { connectionStatusElem.textContent = `Error: ${err.type}. Room ID mungkin salah atau Host tidak aktif.`; connectBtn.disabled = false; });
         }
         
         function handleStateUpdate(state) {
