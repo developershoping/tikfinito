@@ -14,7 +14,7 @@
         button { font-size: 16px; padding: 12px 20px; border: none; border-radius: 6px; background-color: #1877f2; color: white; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
         button:hover { background-color: #166fe5; }
         button:disabled { background-color: #9cb4d8; cursor: not-allowed; }
-        #audio-toggle-btn { background-color: #fa383e; }
+        #audio-toggle-btn { background-color: #fa383e; margin-top: 10px; }
         #audio-toggle-btn.unmuted { background-color: #31a24c; }
         #log { min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 6px; background: #fff; }
         .log-item { padding: 8px; border-bottom: 1px solid #f0f2f5; }
@@ -40,7 +40,7 @@
             <h2>AI TikTok - Control Panel</h2>
             <div class="host-info">
                 Status Host: <strong id="host-id-display"></strong> | Penonton Terhubung: <span id="client-count">0</span><br>
-                Status Koneksi TikTok: <span id="tiktok-status">Idle</span><br><br>
+                Status Koneksi TikTok: <span id="tiktok-status">Idle</span><br>
                 <button id="audio-toggle-btn">Unmute Audio (Host)</button>
             </div>
             <div class="controls">
@@ -71,8 +71,7 @@
             isSpeaking.value = true;
             const textToSpeak = speechQueue.shift();
             const utterance = new SpeechSynthesisUtterance(textToSpeak);
-            utterance.lang = 'id-ID';
-            utterance.rate = 1.3;
+            utterance.lang = 'id-ID'; utterance.rate = 1.3;
             utterance.onend = () => { isSpeaking.value = false; processSpeechQueue(); };
             speechSynthesis.speak(utterance);
         }
@@ -81,14 +80,8 @@
             isAudioEnabled = !isAudioEnabled;
             audioToggleBtn.textContent = isAudioEnabled ? 'Mute Audio (Host)' : 'Unmute Audio (Host)';
             audioToggleBtn.classList.toggle('unmuted', isAudioEnabled);
-            if (isAudioEnabled) {
-                const wakeUp = new SpeechSynthesisUtterance(' ');
-                wakeUp.volume = 0;
-                speechSynthesis.speak(wakeUp);
-                processSpeechQueue();
-            } else {
-                speechSynthesis.cancel();
-            }
+            if (isAudioEnabled) { const wakeUp = new SpeechSynthesisUtterance(' '); wakeUp.volume = 0; speechSynthesis.speak(wakeUp); processSpeechQueue(); } 
+            else { speechSynthesis.cancel(); }
         }
 
         function startHost() {
@@ -97,13 +90,7 @@
             startHostBtn.disabled = true; hostStatusElem.textContent = "Menghubungkan...";
             if (peer) peer.destroy();
             peer = new Peer(customRoomId);
-
-            peer.on('open', id => {
-                hostSetupBox.style.display = 'none'; mainHostApp.style.display = 'block';
-                hostIdDisplay.textContent = `Aktif dengan ID: ${id}`;
-                if (syncInterval) clearInterval(syncInterval);
-                syncInterval = setInterval(syncWithLocalServer, 2000);
-            });
+            peer.on('open', id => { hostSetupBox.style.display = 'none'; mainHostApp.style.display = 'block'; hostIdDisplay.textContent = `Aktif dengan ID: ${id}`; if (syncInterval) clearInterval(syncInterval); syncInterval = setInterval(syncWithLocalServer, 2000); });
             peer.on('connection', conn => { connections.push(conn); updateClientCount(); conn.on('close', () => { connections = connections.filter(c => c.peer !== conn.peer); updateClientCount(); }); });
             peer.on('error', err => { hostStatusElem.textContent = `Error: ${err.type}. Coba ID lain.`; startHostBtn.disabled = false; });
         }
@@ -116,8 +103,7 @@
                 const response = await fetch(`${API_URL}/api/status`);
                 const state = await response.json();
                 tiktokStatusElem.textContent = state.tiktok_status;
-                processNewLogs(state.log_items);
-                broadcastToViewers(state);
+                processNewLogs(state.log_items); broadcastToViewers(state);
             } catch (error) { tiktokStatusElem.textContent = "Server Lokal Tidak Ditemukan!"; }
         }
 
@@ -128,16 +114,12 @@
                 let html = '';
                 switch(item.type) {
                     case 'comment': html = `<div class="log-item comment"><span class="user">${item.data.user}:</span> ${item.data.text}</div>`; break;
-                    case 'ai_response':
-                        html = `<div class="log-item ai_response"><span class="user">🤖 AI:</span> ${item.data.text}</div>`;
-                        speechQueue.push(item.data.text);
-                        processSpeechQueue();
-                        break;
+                    case 'ai_response': html = `<div class="log-item ai_response"><span class="user">🤖 AI:</span> ${item.data.text}</div>`; speechQueue.push(item.data.text); processSpeechQueue(); break;
                     case 'status': html = `<div class="log-item status"><span class="user">STATUS:</span> ${item.data.message}</div>`; break;
                 }
                 if(html) addLog(html);
             });
-            lastTimestamp = log_items[log_items.length - 1].timestamp;
+            if (log_items.length > 0) lastTimestamp = log_items[log_items.length - 1].timestamp;
         }
 
         function addLog(html) { const item = document.createElement('div'); item.innerHTML = html; logDiv.appendChild(item); logDiv.scrollTop = logDiv.scrollHeight; }
